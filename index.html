@@ -7,197 +7,574 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        /* (Keep all previous styles) */
+        :root {
+            --primary: #4e73df;
+            --success: #1cc88a;
+            --info: #36b9cc;
+            --warning: #f6c23e;
+            --danger: #e74a3b;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .auth-container {
+            max-width: 450px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .finger-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #f0f5ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid #dee2e6;
+        }
+        .finger-icon i {
+            font-size: 60px;
+            color: var(--primary);
+        }
+        .finger-icon.scanning {
+            animation: pulse 1.5s infinite;
+            border-color: var(--primary);
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(78, 115, 223, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(78, 115, 223, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(78, 115, 223, 0); }
+        }
+        .card {
+            border: none;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        .card-header {
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
+        }
+        .bg-primary {
+            background-color: var(--primary) !important;
+        }
+        .text-primary {
+            color: var(--primary) !important;
+        }
+        .badge-primary {
+            background-color: var(--primary);
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary) 10%, #224abe 100%);
+        }
+        .attendance-card {
+            border-left: 0.25rem solid var(--primary);
+        }
+        .break-card {
+            border-left: 0.25rem solid var(--info);
+        }
+        .present-card {
+            border-left: 0.25rem solid var(--success);
+        }
+        .absent-card {
+            border-left: 0.25rem solid var(--danger);
+        }
     </style>
 </head>
 <body>
-    <!-- (Keep all previous HTML structure) -->
+    <!-- Authentication Screen -->
+    <div class="container" id="authContainer">
+        <div class="auth-container">
+            <h2 class="mb-4" id="authTitle">Biometric Login</h2>
+            <p class="text-muted" id="authInstruction">Place your finger to sign in</p>
+            
+            <div class="fingerprint-scan my-4">
+                <div class="finger-icon" id="fingerScanner">
+                    <i class="bi bi-fingerprint"></i>
+                </div>
+            </div>
+            
+            <div id="statusMessage" class="alert d-none"></div>
+        </div>
+    </div>
 
+    <!-- Dashboard (hidden by default) -->
+    <div class="container-fluid d-none" id="dashboardContainer">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 d-none d-md-block sidebar py-4 text-white">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-light mx-auto mb-2" style="width: 80px; height: 80px;">
+                        <i class="bi bi-person-fill text-primary" style="font-size: 3rem; line-height: 80px;"></i>
+                    </div>
+                    <h5 id="sidebarUserName">User Name</h5>
+                    <small id="sidebarUserRole">Employee</small>
+                </div>
+                <hr class="bg-light">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="#">
+                            <i class="bi bi-speedometer2 mr-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="#" id="logoutLink">
+                            <i class="bi bi-box-arrow-right mr-2"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Main Content -->
+            <main role="main" class="col-md-9 ml-sm-auto px-4 py-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Employee Dashboard</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group mr-2">
+                            <button class="btn btn-sm btn-outline-secondary" id="refreshBtn">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card h-100 py-2 attendance-card">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Today's Hours</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="hoursWorkedToday">0h 0m</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-clock-history text-primary" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card h-100 py-2 present-card">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Present (Month)</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="daysPresent">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-check text-success" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card h-100 py-2 absent-card">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                            Absent (Month)</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="daysAbsent">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-x text-danger" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6 mb-4">
+                        <div class="card h-100 py-2 break-card">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                            Months Present (Year)</div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="monthsPresent">0</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="bi bi-calendar-month text-info" style="font-size: 2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Break Request Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="m-0">Break Requests</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <button class="btn btn-primary" id="requestBreakBtn">
+                                    <i class="bi bi-plus-circle"></i> Request Break
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="breakRequestsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Duration</th>
+                                        <th>Reason</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Break requests will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fingerprint Logout -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="m-0">Biometric Logout</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="text-muted">Place your finger to sign out</p>
+                        <div class="finger-icon mx-auto" id="logoutScanner" style="width: 100px; height: 100px;">
+                            <i class="bi bi-fingerprint" style="font-size: 40px;"></i>
+                        </div>
+                        <div id="logoutStatusMessage" class="alert d-none mt-3"></div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Break Request Modal -->
+    <div class="modal fade" id="breakRequestModal" tabindex="-1" role="dialog" aria-labelledby="breakRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="breakRequestModalLabel">Request Break</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="breakRequestForm">
+                        <div class="form-group">
+                            <label for="breakDuration">Duration (minutes)</label>
+                            <select class="form-control" id="breakDuration" required>
+                                <option value="15">15 minutes</option>
+                                <option value="30">30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60">1 hour</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="breakReason">Reason</label>
+                            <textarea class="form-control" id="breakReason" rows="3" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitBreakRequest">Submit Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Shared Data Service (simulates backend API)
-        class DataService {
-            constructor() {
-                this.users = JSON.parse(localStorage.getItem('users')) || [
-                    { id: 'user1', name: 'John Doe', role: 'employee', fingerprint: 'fingerprint1', active: true },
-                    { id: 'user2', name: 'Jane Smith', role: 'admin', fingerprint: 'fingerprint2', active: true }
-                ];
-                
-                this.breakRequests = JSON.parse(localStorage.getItem('breakRequests')) || [];
-                this.attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
-                this.notifications = JSON.parse(localStorage.getItem('notifications')) || [];
-            }
-
-            // User Methods
-            getUsers() {
-                return Promise.resolve(this.users);
-            }
-
-            getUser(id) {
-                return Promise.resolve(this.users.find(u => u.id === id));
-            }
-
-            addUser(user) {
-                this.users.push(user);
-                this._save('users');
-                return Promise.resolve(user);
-            }
-
-            updateUser(id, updates) {
-                const user = this.users.find(u => u.id === id);
-                if (user) {
-                    Object.assign(user, updates);
-                    this._save('users');
-                }
-                return Promise.resolve(user);
-            }
-
-            // Break Request Methods
-            getBreakRequests(userId = null) {
-                let requests = this.breakRequests;
-                if (userId) {
-                    requests = requests.filter(r => r.userId === userId);
-                }
-                return Promise.resolve(requests);
-            }
-
-            createBreakRequest(request) {
-                request.id = 'br_' + Date.now();
-                request.status = 'Pending';
-                request.createdAt = new Date().toISOString();
-                this.breakRequests.push(request);
-                this._save('breakRequests');
-                
-                // Create notification for admins
-                this.createNotification({
-                    type: 'break_request',
-                    recipientRole: 'admin',
-                    message: `New break request from ${request.userName}`,
-                    relatedId: request.id,
-                    read: false
-                });
-                
-                return Promise.resolve(request);
-            }
-
-            updateBreakRequest(id, updates) {
-                const request = this.breakRequests.find(r => r.id === id);
-                if (request) {
-                    Object.assign(request, updates);
-                    this._save('breakRequests');
-                    
-                    // Create notification for user
-                    if (updates.status) {
-                        this.createNotification({
-                            type: 'break_status',
-                            recipientId: request.userId,
-                            message: `Your break request was ${updates.status}`,
-                            relatedId: request.id,
-                            read: false
-                        });
-                    }
-                }
-                return Promise.resolve(request);
-            }
-
-            deleteBreakRequest(id) {
-                this.breakRequests = this.breakRequests.filter(r => r.id !== id);
-                this._save('breakRequests');
-                return Promise.resolve();
-            }
-
-            // Attendance Methods
-            getAttendanceRecords(userId) {
-                return Promise.resolve(
-                    this.attendanceRecords.filter(r => r.userId === userId)
-                );
-            }
-
-            createAttendanceRecord(record) {
-                this.attendanceRecords.push(record);
-                this._save('attendanceRecords');
-                return Promise.resolve(record);
-            }
-
-            // Notification Methods
-            getNotifications(recipientId, recipientRole) {
-                let notifications = this.notifications;
-                if (recipientId) {
-                    notifications = notifications.filter(n => n.recipientId === recipientId);
-                }
-                if (recipientRole) {
-                    notifications = notifications.filter(n => n.recipientRole === recipientRole);
-                }
-                return Promise.resolve(notifications);
-            }
-
-            createNotification(notification) {
-                notification.id = 'n_' + Date.now();
-                notification.createdAt = new Date().toISOString();
-                this.notifications.push(notification);
-                this._save('notifications');
-                return Promise.resolve(notification);
-            }
-
-            markNotificationAsRead(id) {
-                const notification = this.notifications.find(n => n.id === id);
-                if (notification) {
-                    notification.read = true;
-                    this._save('notifications');
-                }
-                return Promise.resolve(notification);
-            }
-
-            // Private method to persist data
-            _save(key) {
-                localStorage.setItem(key, JSON.stringify(this[key]));
-            }
-        }
-
-        // Main Application
         document.addEventListener('DOMContentLoaded', function() {
-            const dataService = new DataService();
+            // DOM Elements
+            const authContainer = document.getElementById('authContainer');
+            const dashboardContainer = document.getElementById('dashboardContainer');
+            const fingerScanner = document.getElementById('fingerScanner');
+            const logoutScanner = document.getElementById('logoutScanner');
+            const statusMessage = document.getElementById('statusMessage');
+            const logoutStatusMessage = document.getElementById('logoutStatusMessage');
+            const authTitle = document.getElementById('authTitle');
+            const authInstruction = document.getElementById('authInstruction');
+            const sidebarUserName = document.getElementById('sidebarUserName');
+            const sidebarUserRole = document.getElementById('sidebarUserRole');
+            const logoutLink = document.getElementById('logoutLink');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const requestBreakBtn = document.getElementById('requestBreakBtn');
+            const submitBreakRequest = document.getElementById('submitBreakRequest');
+            const breakRequestsTable = document.getElementById('breakRequestsTable').getElementsByTagName('tbody')[0];
+            
+            // Stats elements
+            const hoursWorkedToday = document.getElementById('hoursWorkedToday');
+            const daysPresent = document.getElementById('daysPresent');
+            const daysAbsent = document.getElementById('daysAbsent');
+            const monthsPresent = document.getElementById('monthsPresent');
+            
+            // State variables
             let currentUser = null;
             let isScanning = false;
-            let enrollmentFingerprint = null;
-
-            // DOM Elements (keep previous selections)
-            // ...
-
+            let expectedAction = 'login';
+            let loginTime = null;
+            let breakRequests = [];
+            
+            // Simulated user database
+            const userDatabase = [
+                { 
+                    id: 'user1', 
+                    name: 'John Doe', 
+                    role: 'Employee',
+                    fingerprint: 'thumbprint_user1',
+                    attendance: {
+                        daysPresentThisMonth: 18,
+                        daysAbsentThisMonth: 2,
+                        monthsPresentThisYear: 7,
+                        todayHours: { hours: 6, minutes: 45 }
+                    }
+                },
+                { 
+                    id: 'user2', 
+                    name: 'Jane Smith', 
+                    role: 'Manager',
+                    fingerprint: 'thumbprint_user2',
+                    attendance: {
+                        daysPresentThisMonth: 20,
+                        daysAbsentThisMonth: 0,
+                        monthsPresentThisYear: 8,
+                        todayHours: { hours: 7, minutes: 30 }
+                    }
+                }
+            ];
+            
+            // Simulated break requests database
+            const breakRequestsDatabase = [
+                { id: 1, userId: 'user1', date: '2023-06-15', duration: 30, reason: 'Doctor appointment', status: 'Approved' },
+                { id: 2, userId: 'user1', date: '2023-06-18', duration: 15, reason: 'Personal', status: 'Pending' },
+                { id: 3, userId: 'user1', date: '2023-06-20', duration: 60, reason: 'Family emergency', status: 'Rejected' }
+            ];
+            
             // Initialize the application
-            init();
-
             function init() {
                 setupEventListeners();
-                checkSession();
             }
-
-            function checkSession() {
-                // In a real app, check for existing session/token
-                const userFromStorage = JSON.parse(localStorage.getItem('currentUser'));
-                if (userFromStorage) {
-                    dataService.getUser(userFromStorage.id)
-                        .then(user => {
-                            if (user) {
-                                currentUser = user;
-                                loadDashboard();
-                            }
-                        });
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // Fingerprint scanners
+                fingerScanner.addEventListener('click', handleLoginScan);
+                logoutScanner.addEventListener('click', handleLogoutScan);
+                
+                // Navigation
+                logoutLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showLogoutScanner();
+                });
+                
+                // Buttons
+                refreshBtn.addEventListener('click', refreshDashboard);
+                requestBreakBtn.addEventListener('click', showBreakRequestModal);
+                submitBreakRequest.addEventListener('click', submitBreakRequestHandler);
+            }
+            
+            // Handle login fingerprint scan
+            function handleLoginScan() {
+                if (isScanning || expectedAction !== 'login') return;
+                
+                isScanning = true;
+                fingerScanner.classList.add('scanning');
+                showStatus('Scanning fingerprint for login...', 'info');
+                
+                // Simulate fingerprint scan
+                setTimeout(() => {
+                    // In real app, this would be actual scanner data
+                    const simulatedPrint = 'thumbprint_user1'; // Simulate successful login
+                    
+                    authenticateUser(simulatedPrint, fingerScanner);
+                }, 2000);
+            }
+            
+            // Handle logout fingerprint scan
+            function handleLogoutScan() {
+                if (isScanning || expectedAction !== 'logout') return;
+                
+                isScanning = true;
+                logoutScanner.classList.add('scanning');
+                showLogoutStatus('Scanning fingerprint for logout...', 'info');
+                
+                // Simulate fingerprint scan
+                setTimeout(() => {
+                    // In real app, this would be actual scanner data
+                    const simulatedPrint = currentUser ? currentUser.fingerprint : '';
+                    
+                    verifyLogout(simulatedPrint, logoutScanner);
+                }, 2000);
+            }
+            
+            // Authenticate user
+            function authenticateUser(fingerprintData, scannerElement) {
+                const user = userDatabase.find(u => u.fingerprint === fingerprintData);
+                
+                if (user) {
+                    currentUser = user;
+                    scannerElement.classList.remove('scanning');
+                    scannerElement.classList.add('success');
+                    showStatus(`Login successful! Welcome ${user.name}`, 'success');
+                    
+                    // Record login time
+                    loginTime = new Date();
+                    
+                    // Load dashboard after delay
+                    setTimeout(() => {
+                        loadDashboard();
+                        expectedAction = 'logout';
+                        isScanning = false;
+                    }, 1500);
+                } else {
+                    scannerElement.classList.remove('scanning');
+                    scannerElement.classList.add('error');
+                    showStatus('Invalid fingerprint. Please try again.', 'danger');
+                    isScanning = false;
                 }
             }
-
-            function setupEventListeners() {
-                // Fingerprint scanner for login
-                fingerScanner.addEventListener('click', handleLogin);
-                
-                // (Keep other event listeners)
-                // ...
-            }
-
-            // (Keep all previous functions but update them to use dataService)
             
-            // Updated functions to show communication between user and admin:
-
-            // Employee submits break request
+            // Verify logout
+            function verifyLogout(fingerprintData, scannerElement) {
+                if (currentUser && fingerprintData === currentUser.fingerprint) {
+                    scannerElement.classList.remove('scanning');
+                    scannerElement.classList.add('success');
+                    showLogoutStatus(`Logout successful. Goodbye ${currentUser.name}`, 'success');
+                    
+                    // Calculate hours worked
+                    const now = new Date();
+                    const hoursWorked = (now - loginTime) / (1000 * 60 * 60);
+                    const hours = Math.floor(hoursWorked);
+                    const minutes = Math.floor((hoursWorked - hours) * 60);
+                    
+                    console.log(`User worked for ${hours}h ${minutes}m today`);
+                    
+                    // Return to login screen after delay
+                    setTimeout(() => {
+                        logoutUser();
+                        expectedAction = 'login';
+                        isScanning = false;
+                    }, 1500);
+                } else {
+                    scannerElement.classList.remove('scanning');
+                    scannerElement.classList.add('error');
+                    showLogoutStatus('Logout failed. Fingerprint did not match.', 'danger');
+                    isScanning = false;
+                }
+            }
+            
+            // Load user dashboard
+            function loadDashboard() {
+                authContainer.classList.add('d-none');
+                dashboardContainer.classList.remove('d-none');
+                
+                // Set user info
+                sidebarUserName.textContent = currentUser.name;
+                sidebarUserRole.textContent = currentUser.role;
+                
+                // Load attendance stats
+                loadAttendanceStats();
+                
+                // Load break requests
+                loadBreakRequests();
+            }
+            
+            // Load attendance statistics
+            function loadAttendanceStats() {
+                if (!currentUser) return;
+                
+                const attendance = currentUser.attendance;
+                
+                // Update stats
+                daysPresent.textContent = attendance.daysPresentThisMonth;
+                daysAbsent.textContent = attendance.daysAbsentThisMonth;
+                monthsPresent.textContent = attendance.monthsPresentThisYear;
+                hoursWorkedToday.textContent = `${attendance.todayHours.hours}h ${attendance.todayHours.minutes}m`;
+            }
+            
+            // Load break requests
+            function loadBreakRequests() {
+                if (!currentUser) return;
+                
+                // Clear existing rows
+                breakRequestsTable.innerHTML = '';
+                
+                // Filter requests for current user
+                const userRequests = breakRequestsDatabase.filter(req => req.userId === currentUser.id);
+                breakRequests = userRequests;
+                
+                // Add requests to table
+                userRequests.forEach(request => {
+                    const row = breakRequestsTable.insertRow();
+                    
+                    // Date cell
+                    const dateCell = row.insertCell(0);
+                    dateCell.textContent = request.date;
+                    
+                    // Duration cell
+                    const durationCell = row.insertCell(1);
+                    durationCell.textContent = `${request.duration} minutes`;
+                    
+                    // Reason cell
+                    const reasonCell = row.insertCell(2);
+                    reasonCell.textContent = request.reason;
+                    
+                    // Status cell
+                    const statusCell = row.insertCell(3);
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = `badge badge-${getStatusBadgeClass(request.status)}`;
+                    statusBadge.textContent = request.status;
+                    statusCell.appendChild(statusBadge);
+                    
+                    // Actions cell
+                    const actionsCell = row.insertCell(4);
+                    if (request.status === 'Pending') {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'btn btn-sm btn-danger';
+                        deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Delete';
+                        deleteBtn.addEventListener('click', () => deleteBreakRequest(request.id));
+                        actionsCell.appendChild(deleteBtn);
+                    } else {
+                        actionsCell.textContent = 'No actions';
+                    }
+                });
+            }
+            
+            // Get badge class based on status
+            function getStatusBadgeClass(status) {
+                switch (status) {
+                    case 'Approved': return 'success';
+                    case 'Rejected': return 'danger';
+                    case 'Pending': return 'warning';
+                    default: return 'secondary';
+                }
+            }
+            
+            // Show break request modal
+            function showBreakRequestModal() {
+                const modal = new bootstrap.Modal(document.getElementById('breakRequestModal'));
+                modal.show();
+            }
+            
+            // Submit break request
             function submitBreakRequestHandler() {
                 const duration = document.getElementById('breakDuration').value;
                 const reason = document.getElementById('breakReason').value;
@@ -207,183 +584,105 @@
                     return;
                 }
                 
-                dataService.createBreakRequest({
+                // Create new request (in real app, this would be an API call)
+                const newRequest = {
+                    id: breakRequests.length + 1,
                     userId: currentUser.id,
-                    userName: currentUser.name,
                     date: new Date().toISOString().split('T')[0],
                     duration: parseInt(duration),
-                    reason: reason
-                }).then(() => {
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('breakRequestModal'));
-                    modal.hide();
-                    
-                    // Show success message
-                    showAlert('Break request submitted successfully!', 'success');
-                    
-                    // Refresh requests if on that page
-                    if (document.getElementById('breakRequestsTable')) {
-                        loadBreakRequests();
-                    }
-                });
-            }
-
-            // Admin processes break request
-            function processBreakAction(requestId) {
-                const status = document.getElementById('actionStatus').value;
-                const comments = document.getElementById('adminComments').value;
+                    reason: reason,
+                    status: 'Pending'
+                };
                 
-                if (!status) {
-                    alert('Please select an action');
-                    return;
-                }
+                // Add to "database" and reload
+                breakRequestsDatabase.push(newRequest);
+                loadBreakRequests();
                 
-                dataService.updateBreakRequest(requestId, {
-                    status: status,
-                    adminComments: comments,
-                    processedAt: new Date().toISOString(),
-                    processedBy: currentUser.id
-                }).then(() => {
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('breakActionModal'));
-                    modal.hide();
-                    
-                    // Show success message
-                    showAlert(`Request ${status.toLowerCase()} successfully`, 'success');
-                    
-                    // Refresh requests
-                    loadBreakRequests();
-                });
-            }
-
-            // Load notifications for current user
-            function loadNotifications() {
-                if (!currentUser) return;
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('breakRequestModal'));
+                modal.hide();
                 
-                const recipientId = currentUser.role === 'admin' ? null : currentUser.id;
-                const recipientRole = currentUser.role === 'admin' ? 'admin' : null;
-                
-                dataService.getNotifications(recipientId, recipientRole)
-                    .then(notifications => {
-                        // Display notifications in UI
-                        const unread = notifications.filter(n => !n.read);
-                        
-                        // Update notification badge
-                        const badge = document.getElementById('notificationBadge');
-                        if (badge) {
-                            badge.textContent = unread.length;
-                            badge.style.display = unread.length ? 'inline-block' : 'none';
-                        }
-                        
-                        // Populate notifications dropdown
-                        const dropdown = document.getElementById('notificationsDropdown');
-                        if (dropdown) {
-                            dropdown.innerHTML = unread.length 
-                                ? unread.map(n => `
-                                    <a class="dropdown-item" href="#" data-id="${n.id}">
-                                        ${n.message}
-                                    </a>
-                                `).join('')
-                                : '<span class="dropdown-item">No new notifications</span>';
-                            
-                            // Add click handlers
-                            dropdown.querySelectorAll('.dropdown-item[data-id]').forEach(item => {
-                                item.addEventListener('click', function(e) {
-                                    e.preventDefault();
-                                    const notificationId = this.getAttribute('data-id');
-                                    handleNotificationClick(notificationId);
-                                });
-                            });
-                        }
-                    });
+                // Reset form
+                document.getElementById('breakRequestForm').reset();
             }
-
-            function handleNotificationClick(notificationId) {
-                dataService.markNotificationAsRead(notificationId)
-                    .then(() => {
-                        // Refresh notifications
-                        loadNotifications();
-                        
-                        // In a real app, you might navigate to the relevant page
-                        // For example, for break request notifications:
-                        if (currentUser.role === 'admin') {
-                            loadBreakRequests();
-                        } else {
-                            // Employee might want to see their requests
-                            if (document.getElementById('myBreakRequests')) {
-                                loadMyBreakRequests();
-                            }
-                        }
-                    });
-            }
-
-            // Employee views their break requests
-            function loadMyBreakRequests() {
-                if (!currentUser) return;
-                
-                dataService.getBreakRequests(currentUser.id)
-                    .then(requests => {
-                        const tbody = document.querySelector('#myBreakRequests tbody');
-                        tbody.innerHTML = '';
-                        
-                        requests.forEach(request => {
-                            const row = tbody.insertRow();
-                            row.innerHTML = `
-                                <td>${formatDate(request.date)}</td>
-                                <td>${request.duration} minutes</td>
-                                <td>${request.reason}</td>
-                                <td><span class="badge ${getStatusBadgeClass(request.status)}">${request.status}</span></td>
-                                <td>
-                                    ${request.status === 'Pending' ? `
-                                    <button class="btn btn-sm btn-danger delete-request" data-id="${request.id}">
-                                        <i class="bi bi-trash"></i> Delete
-                                    </button>
-                                    ` : ''}
-                                </td>
-                            `;
-                        });
-                        
-                        // Add delete handlers
-                        document.querySelectorAll('.delete-request').forEach(btn => {
-                            btn.addEventListener('click', function() {
-                                const requestId = this.getAttribute('data-id');
-                                deleteMyBreakRequest(requestId);
-                            });
-                        });
-                    });
-            }
-
-            function deleteMyBreakRequest(requestId) {
+            
+            // Delete break request
+            function deleteBreakRequest(requestId) {
                 if (confirm('Are you sure you want to delete this request?')) {
-                    dataService.deleteBreakRequest(requestId)
-                        .then(() => {
-                            showAlert('Request deleted successfully', 'success');
-                            loadMyBreakRequests();
-                        });
+                    // Find and remove request (in real app, this would be an API call)
+                    const index = breakRequestsDatabase.findIndex(req => req.id === requestId);
+                    if (index !== -1) {
+                        breakRequestsDatabase.splice(index, 1);
+                    }
+                    
+                    // Reload requests
+                    loadBreakRequests();
                 }
             }
-
-            // Helper functions
-            function formatDate(dateString) {
-                return new Date(dateString).toLocaleDateString();
-            }
-
-            function showAlert(message, type) {
+            
+            // Refresh dashboard
+            function refreshDashboard() {
+                if (!currentUser) return;
+                
+                // In a real app, this would fetch fresh data from the server
+                loadAttendanceStats();
+                loadBreakRequests();
+                
+                // Show refresh feedback
                 const alert = document.createElement('div');
-                alert.className = `alert alert-${type} alert-dismissible fade show`;
+                alert.className = 'alert alert-success alert-dismissible fade show';
                 alert.innerHTML = `
-                    ${message}
+                    Dashboard refreshed successfully
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 `;
                 const header = document.querySelector('main h1');
                 header.parentNode.insertBefore(alert, header.nextSibling);
                 
+                // Auto-dismiss after 3 seconds
                 setTimeout(() => {
                     bootstrap.Alert.getInstance(alert).close();
-                }, 5000);
+                }, 3000);
             }
-
-            // (Keep all other existing functions, updating them to use dataService)
+            
+            // Logout user
+            function logoutUser() {
+                currentUser = null;
+                loginTime = null;
+                
+                dashboardContainer.classList.add('d-none');
+                authContainer.classList.remove('d-none');
+                
+                // Reset status messages
+                statusMessage.className = 'alert d-none';
+                logoutStatusMessage.className = 'alert d-none';
+                
+                // Reset fingerprint scanner UI
+                fingerScanner.classList.remove('scanning', 'success', 'error');
+                logoutScanner.classList.remove('scanning', 'success', 'error');
+            }
+            
+            // Show logout scanner
+            function showLogoutScanner() {
+                // Scroll to logout scanner
+                document.getElementById('logoutScanner').scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            // Show status message
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = `alert alert-${type}`;
+                statusMessage.classList.remove('d-none');
+            }
+            
+            // Show logout status message
+            function showLogoutStatus(message, type) {
+                logoutStatusMessage.textContent = message;
+                logoutStatusMessage.className = `alert alert-${type}`;
+                logoutStatusMessage.classList.remove('d-none');
+            }
+            
+            // Initialize the app
+            init();
         });
     </script>
 </body>
