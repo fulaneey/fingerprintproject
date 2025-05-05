@@ -228,4 +228,3 @@ Works with your existing Docker setup
 
 Can be extended with PHP backend for data persistence
 
-Would you like me to explain any specific part in more detail or add any additional features to this implementation?
