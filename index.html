@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        /* (Keep all previous styles) */
+    </style>
+</head>
+<body>
+    <!-- (Keep all previous HTML structure) -->
+
+    <script>
+        // Shared Data Service (simulates backend API)
+        class DataService {
+            constructor() {
+                this.users = JSON.parse(localStorage.getItem('users')) || [
+                    { id: 'user1', name: 'John Doe', role: 'employee', fingerprint: 'fingerprint1', active: true },
+                    { id: 'user2', name: 'Jane Smith', role: 'admin', fingerprint: 'fingerprint2', active: true }
+                ];
+                
+                this.breakRequests = JSON.parse(localStorage.getItem('breakRequests')) || [];
+                this.attendanceRecords = JSON.parse(localStorage.getItem('attendanceRecords')) || [];
+                this.notifications = JSON.parse(localStorage.getItem('notifications')) || [];
+            }
+
+            // User Methods
+            getUsers() {
+                return Promise.resolve(this.users);
+            }
+
+            getUser(id) {
+                return Promise.resolve(this.users.find(u => u.id === id));
+            }
+
+            addUser(user) {
+                this.users.push(user);
+                this._save('users');
+                return Promise.resolve(user);
+            }
+
+            updateUser(id, updates) {
+                const user = this.users.find(u => u.id === id);
+                if (user) {
+                    Object.assign(user, updates);
+                    this._save('users');
+                }
+                return Promise.resolve(user);
+            }
+
+            // Break Request Methods
+            getBreakRequests(userId = null) {
+                let requests = this.breakRequests;
+                if (userId) {
+                    requests = requests.filter(r => r.userId === userId);
+                }
+                return Promise.resolve(requests);
+            }
+
+            createBreakRequest(request) {
+                request.id = 'br_' + Date.now();
+                request.status = 'Pending';
+                request.createdAt = new Date().toISOString();
+                this.breakRequests.push(request);
+                this._save('breakRequests');
+                
+                // Create notification for admins
+                this.createNotification({
+                    type: 'break_request',
+                    recipientRole: 'admin',
+                    message: `New break request from ${request.userName}`,
+                    relatedId: request.id,
+                    read: false
+                });
+                
+                return Promise.resolve(request);
+            }
+
+            updateBreakRequest(id, updates) {
+                const request = this.breakRequests.find(r => r.id === id);
+                if (request) {
+                    Object.assign(request, updates);
+                    this._save('breakRequests');
+                    
+                    // Create notification for user
+                    if (updates.status) {
+                        this.createNotification({
+                            type: 'break_status',
+                            recipientId: request.userId,
+                            message: `Your break request was ${updates.status}`,
+                            relatedId: request.id,
+                            read: false
+                        });
+                    }
+                }
+                return Promise.resolve(request);
+            }
+
+            deleteBreakRequest(id) {
+                this.breakRequests = this.breakRequests.filter(r => r.id !== id);
+                this._save('breakRequests');
+                return Promise.resolve();
+            }
+
+            // Attendance Methods
+            getAttendanceRecords(userId) {
+                return Promise.resolve(
+                    this.attendanceRecords.filter(r => r.userId === userId)
+                );
+            }
+
+            createAttendanceRecord(record) {
+                this.attendanceRecords.push(record);
+                this._save('attendanceRecords');
+                return Promise.resolve(record);
+            }
+
+            // Notification Methods
+            getNotifications(recipientId, recipientRole) {
+                let notifications = this.notifications;
+                if (recipientId) {
+                    notifications = notifications.filter(n => n.recipientId === recipientId);
+                }
+                if (recipientRole) {
+                    notifications = notifications.filter(n => n.recipientRole === recipientRole);
+                }
+                return Promise.resolve(notifications);
+            }
+
+            createNotification(notification) {
+                notification.id = 'n_' + Date.now();
+                notification.createdAt = new Date().toISOString();
+                this.notifications.push(notification);
+                this._save('notifications');
+                return Promise.resolve(notification);
+            }
+
+            markNotificationAsRead(id) {
+                const notification = this.notifications.find(n => n.id === id);
+                if (notification) {
+                    notification.read = true;
+                    this._save('notifications');
+                }
+                return Promise.resolve(notification);
+            }
+
+            // Private method to persist data
+            _save(key) {
+                localStorage.setItem(key, JSON.stringify(this[key]));
+            }
+        }
+
+        // Main Application
+        document.addEventListener('DOMContentLoaded', function() {
+            const dataService = new DataService();
+            let currentUser = null;
+            let isScanning = false;
+            let enrollmentFingerprint = null;
+
+            // DOM Elements (keep previous selections)
+            // ...
+
+            // Initialize the application
+            init();
+
+            function init() {
+                setupEventListeners();
+                checkSession();
+            }
+
+            function checkSession() {
+                // In a real app, check for existing session/token
+                const userFromStorage = JSON.parse(localStorage.getItem('currentUser'));
+                if (userFromStorage) {
+                    dataService.getUser(userFromStorage.id)
+                        .then(user => {
+                            if (user) {
+                                currentUser = user;
+                                loadDashboard();
+                            }
+                        });
+                }
+            }
+
+            function setupEventListeners() {
+                // Fingerprint scanner for login
+                fingerScanner.addEventListener('click', handleLogin);
+                
+                // (Keep other event listeners)
+                // ...
+            }
+
+            // (Keep all previous functions but update them to use dataService)
+            
+            // Updated functions to show communication between user and admin:
+
+            // Employee submits break request
+            function submitBreakRequestHandler() {
+                const duration = document.getElementById('breakDuration').value;
+                const reason = document.getElementById('breakReason').value;
+                
+                if (!duration || !reason) {
+                    alert('Please fill all fields');
+                    return;
+                }
+                
+                dataService.createBreakRequest({
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    date: new Date().toISOString().split('T')[0],
+                    duration: parseInt(duration),
+                    reason: reason
+                }).then(() => {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('breakRequestModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    showAlert('Break request submitted successfully!', 'success');
+                    
+                    // Refresh requests if on that page
+                    if (document.getElementById('breakRequestsTable')) {
+                        loadBreakRequests();
+                    }
+                });
+            }
+
+            // Admin processes break request
+            function processBreakAction(requestId) {
+                const status = document.getElementById('actionStatus').value;
+                const comments = document.getElementById('adminComments').value;
+                
+                if (!status) {
+                    alert('Please select an action');
+                    return;
+                }
+                
+                dataService.updateBreakRequest(requestId, {
+                    status: status,
+                    adminComments: comments,
+                    processedAt: new Date().toISOString(),
+                    processedBy: currentUser.id
+                }).then(() => {
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('breakActionModal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    showAlert(`Request ${status.toLowerCase()} successfully`, 'success');
+                    
+                    // Refresh requests
+                    loadBreakRequests();
+                });
+            }
+
+            // Load notifications for current user
+            function loadNotifications() {
+                if (!currentUser) return;
+                
+                const recipientId = currentUser.role === 'admin' ? null : currentUser.id;
+                const recipientRole = currentUser.role === 'admin' ? 'admin' : null;
+                
+                dataService.getNotifications(recipientId, recipientRole)
+                    .then(notifications => {
+                        // Display notifications in UI
+                        const unread = notifications.filter(n => !n.read);
+                        
+                        // Update notification badge
+                        const badge = document.getElementById('notificationBadge');
+                        if (badge) {
+                            badge.textContent = unread.length;
+                            badge.style.display = unread.length ? 'inline-block' : 'none';
+                        }
+                        
+                        // Populate notifications dropdown
+                        const dropdown = document.getElementById('notificationsDropdown');
+                        if (dropdown) {
+                            dropdown.innerHTML = unread.length 
+                                ? unread.map(n => `
+                                    <a class="dropdown-item" href="#" data-id="${n.id}">
+                                        ${n.message}
+                                    </a>
+                                `).join('')
+                                : '<span class="dropdown-item">No new notifications</span>';
+                            
+                            // Add click handlers
+                            dropdown.querySelectorAll('.dropdown-item[data-id]').forEach(item => {
+                                item.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    const notificationId = this.getAttribute('data-id');
+                                    handleNotificationClick(notificationId);
+                                });
+                            });
+                        }
+                    });
+            }
+
+            function handleNotificationClick(notificationId) {
+                dataService.markNotificationAsRead(notificationId)
+                    .then(() => {
+                        // Refresh notifications
+                        loadNotifications();
+                        
+                        // In a real app, you might navigate to the relevant page
+                        // For example, for break request notifications:
+                        if (currentUser.role === 'admin') {
+                            loadBreakRequests();
+                        } else {
+                            // Employee might want to see their requests
+                            if (document.getElementById('myBreakRequests')) {
+                                loadMyBreakRequests();
+                            }
+                        }
+                    });
+            }
+
+            // Employee views their break requests
+            function loadMyBreakRequests() {
+                if (!currentUser) return;
+                
+                dataService.getBreakRequests(currentUser.id)
+                    .then(requests => {
+                        const tbody = document.querySelector('#myBreakRequests tbody');
+                        tbody.innerHTML = '';
+                        
+                        requests.forEach(request => {
+                            const row = tbody.insertRow();
+                            row.innerHTML = `
+                                <td>${formatDate(request.date)}</td>
+                                <td>${request.duration} minutes</td>
+                                <td>${request.reason}</td>
+                                <td><span class="badge ${getStatusBadgeClass(request.status)}">${request.status}</span></td>
+                                <td>
+                                    ${request.status === 'Pending' ? `
+                                    <button class="btn btn-sm btn-danger delete-request" data-id="${request.id}">
+                                        <i class="bi bi-trash"></i> Delete
+                                    </button>
+                                    ` : ''}
+                                </td>
+                            `;
+                        });
+                        
+                        // Add delete handlers
+                        document.querySelectorAll('.delete-request').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                const requestId = this.getAttribute('data-id');
+                                deleteMyBreakRequest(requestId);
+                            });
+                        });
+                    });
+            }
+
+            function deleteMyBreakRequest(requestId) {
+                if (confirm('Are you sure you want to delete this request?')) {
+                    dataService.deleteBreakRequest(requestId)
+                        .then(() => {
+                            showAlert('Request deleted successfully', 'success');
+                            loadMyBreakRequests();
+                        });
+                }
+            }
+
+            // Helper functions
+            function formatDate(dateString) {
+                return new Date(dateString).toLocaleDateString();
+            }
+
+            function showAlert(message, type) {
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type} alert-dismissible fade show`;
+                alert.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                const header = document.querySelector('main h1');
+                header.parentNode.insertBefore(alert, header.nextSibling);
+                
+                setTimeout(() => {
+                    bootstrap.Alert.getInstance(alert).close();
+                }, 5000);
+            }
+
+            // (Keep all other existing functions, updating them to use dataService)
+        });
+    </script>
+</body>
+</html>

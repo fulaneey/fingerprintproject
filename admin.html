@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometric Attendance System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary: #4e73df;
+            --success: #1cc88a;
+            --info: #36b9cc;
+            --warning: #f6c23e;
+            --danger: #e74a3b;
+        }
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .auth-container {
+            max-width: 450px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .finger-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: #f0f5ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid #dee2e6;
+        }
+        .finger-icon i {
+            font-size: 60px;
+            color: var(--primary);
+        }
+        .finger-icon.scanning {
+            animation: pulse 1.5s infinite;
+            border-color: var(--primary);
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(78, 115, 223, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(78, 115, 223, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(78, 115, 223, 0); }
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary) 10%, #224abe 100%);
+            min-height: 100vh;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .nav-link:hover, .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .card {
+            border: none;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        }
+        .badge-primary {
+            background-color: var(--primary);
+        }
+        .enrollment-steps {
+            display: none;
+        }
+        .enrollment-steps.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Screen -->
+    <div class="container" id="authContainer">
+        <div class="auth-container">
+            <h2 class="mb-4">Biometric Login</h2>
+            <p class="text-muted">Place your finger to sign in</p>
+            
+            <div class="fingerprint-scan my-4">
+                <div class="finger-icon" id="fingerScanner">
+                    <i class="bi bi-fingerprint"></i>
+                </div>
+            </div>
+            
+            <div id="statusMessage" class="alert d-none"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Container -->
+    <div class="container-fluid d-none" id="dashboardContainer">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-2 sidebar py-4 text-white">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-light mx-auto mb-2" style="width: 80px; height: 80px;">
+                        <i class="bi bi-person-fill text-primary" style="font-size: 3rem; line-height: 80px;"></i>
+                    </div>
+                    <h5 id="sidebarUserName">User Name</h5>
+                    <small id="sidebarUserRole">Employee</small>
+                </div>
+                <hr class="bg-light">
+                <ul class="nav flex-column" id="mainMenu">
+                    <!-- Dynamic menu will be inserted here -->
+                </ul>
+            </nav>
+
+            <!-- Main Content -->
+            <main role="main" class="col-md-10 ml-sm-auto px-4 py-4" id="mainContent">
+                <!-- Dynamic content will be loaded here -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Templates -->
+    <template id="employeeDashboardTemplate">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">Employee Dashboard</h1>
+        </div>
+        
+        <!-- Employee content will be loaded here -->
+    </template>
+
+    <template id="adminDashboardTemplate">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">Admin Dashboard</h1>
+        </div>
+        
+        <!-- Admin content will be loaded here -->
+    </template>
+
+    <template id="breakRequestsTemplate">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="m-0">Break Requests</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="breakRequestsTable">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Date</th>
+                                <th>Duration</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Break requests will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="attendanceRecordsTemplate">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="m-0">Attendance Records</h5>
+                    <div>
+                        <select class="form-select form-select-sm" id="userSelect" style="width: 200px;">
+                            <option value="">Select Employee</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Login Time</th>
+                                <th>Logout Time</th>
+                                <th>Hours Worked</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Attendance records will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="userManagementTemplate">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="m-0">User Management</h5>
+                    <button class="btn btn-sm btn-primary" id="addUserBtn">
+                        <i class="bi bi-plus"></i> Add User
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Users will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="enrollUserTemplate">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="m-0">Enroll New User</h5>
+            </div>
+            <div class="card-body">
+                <form id="userForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="fullName" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="fullName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="userRole" class="form-label">Role</label>
+                            <select class="form-select" id="userRole" required>
+                                <option value="">Select Role</option>
+                                <option value="employee">Employee</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="enrollment-steps" id="step1">
+                        <div class="text-center mb-4">
+                            <h5>Step 1: Basic Information</h5>
+                            <button type="button" class="btn btn-primary" id="nextToStep2">Next</button>
+                        </div>
+                    </div>
+                    
+                    <div class="enrollment-steps" id="step2">
+                        <div class="text-center mb-4">
+                            <h5>Step 2: Biometric Enrollment</h5>
+                            <p>Please scan the user's fingerprint</p>
+                            <div class="finger-icon mx-auto my-4" id="enrollmentScanner">
+                                <i class="bi bi-fingerprint"></i>
+                            </div>
+                            <div id="enrollmentStatus" class="alert d-none mb-3"></div>
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" id="backToStep1">Back</button>
+                                <button type="button" class="btn btn-primary" id="completeEnrollment" disabled>Complete Enrollment</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modals -->
+    <div class="modal fade" id="breakActionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Break Request Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="breakActionForm">
+                        <input type="hidden" id="breakRequestId">
+                        <div class="mb-3">
+                            <label for="actionStatus" class="form-label">Action</label>
+                            <select class="form-select" id="actionStatus" required>
+                                <option value="">Select Action</option>
+                                <option value="Approved">Approve</option>
+                                <option value="Rejected">Reject</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="adminComments" class="form-label">Comments</label>
+                            <textarea class="form-control" id="adminComments" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitBreakAction">Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const authContainer = document.getElementById('authContainer');
+            const dashboardContainer = document.getElementById('dashboardContainer');
+            const fingerScanner = document.getElementById('fingerScanner');
+            const statusMessage = document.getElementById('statusMessage');
+            const mainMenu = document.getElementById('mainMenu');
+            const mainContent = document.getElementById('mainContent');
+            
+            // State variables
+            let currentUser = null;
+            let isScanning = false;
+            let enrollmentFingerprint = null;
+            
+            // Simulated databases
+            let users = [
+                { id: 'user1', name: 'John Doe', role: 'employee', fingerprint: 'fingerprint1', active: true },
+                { id: 'user2', name: 'Jane Smith', role: 'admin', fingerprint: 'fingerprint2', active: true },
+                { id: 'user3', name: 'Mike Johnson', role: 'employee', fingerprint: 'fingerprint3', active: true }
+            ];
+            
+            let breakRequests = [
+                { id: 1, userId: 'user1', userName: 'John Doe', date: '2023-06-15', duration: 30, reason: 'Doctor appointment', status: 'Pending' },
+                { id: 2, userId: 'user3', userName: 'Mike Johnson', date: '2023-06-18', duration: 15, reason: 'Personal', status: 'Pending' }
+            ];
+            
+            let attendanceRecords = [
+                { userId: 'user1', date: '2023-06-01', login: '08:00:00', logout: '17:00:00', status: 'Present' },
+                { userId: 'user1', date: '2023-06-02', login: '08:15:00', logout: '16:45:00', status: 'Present' },
+                { userId: 'user1', date: '2023-06-03', login: null, logout: null, status: 'Absent' },
+                { userId: 'user2', date: '2023-06-01', login: '09:00:00', logout: '18:00:00', status: 'Present' },
+                { userId: 'user3', date: '2023-06-01', login: '08:30:00', logout: '17:30:00', status: 'Present' }
+            ];
+            
+            // Initialize the application
+            init();
+            
+            function init() {
+                setupEventListeners();
+            }
+            
+            function setupEventListeners() {
+                // Fingerprint scanner for login
+                fingerScanner.addEventListener('click', handleLogin);
+            }
+            
+            function handleLogin() {
+                if (isScanning) return;
+                
+                isScanning = true;
+                fingerScanner.classList.add('scanning');
+                showStatus('Scanning fingerprint...', 'info');
+                
+                // Simulate fingerprint scan
+                setTimeout(() => {
+                    // In real app, this would be actual scanner data
+                    const simulatedPrint = 'fingerprint2'; // Simulate admin login
+                    
+                    authenticateUser(simulatedPrint);
+                }, 2000);
+            }
+            
+            function authenticateUser(fingerprint) {
+                const user = users.find(u => u.fingerprint === fingerprint);
+                
+                if (user) {
+                    currentUser = user;
+                    fingerScanner.classList.remove('scanning');
+                    fingerScanner.classList.add('success');
+                    showStatus(`Welcome ${user.name}`, 'success');
+                    
+                    // Load dashboard after delay
+                    setTimeout(() => {
+                        loadDashboard();
+                        isScanning = false;
+                    }, 1500);
+                } else {
+                    fingerScanner.classList.remove('scanning');
+                    fingerScanner.classList.add('error');
+                    showStatus('Authentication failed', 'danger');
+                    isScanning = false;
+                }
+            }
+            
+            function loadDashboard() {
+                authContainer.classList.add('d-none');
+                dashboardContainer.classList.remove('d-none');
+                
+                // Update sidebar
+                document.getElementById('sidebarUserName').textContent = currentUser.name;
+                document.getElementById('sidebarUserRole').textContent = currentUser.role;
+                
+                // Load appropriate menu
+                loadMenu();
+                
+                // Load initial content based on role
+                if (currentUser.role === 'admin') {
+                    loadAdminDashboard();
+                } else {
+                    loadEmployeeDashboard();
+                }
+            }
+            
+            function loadMenu() {
+                mainMenu.innerHTML = '';
+                
+                // Common menu items
+                const commonItems = [
+                    { icon: 'speedometer2', text: 'Dashboard', action: () => loadDefaultDashboard() },
+                    { icon: 'box-arrow-right', text: 'Logout', action: logout }
+                ];
+                
+                // Admin specific items
+                if (currentUser.role === 'admin') {
+                    commonItems.splice(1, 0, 
+                        { icon: 'list-check', text: 'Break Requests', action: () => loadBreakRequests() },
+                        { icon: 'calendar-check', text: 'Attendance', action: () => loadAttendanceRecords() },
+                        { icon: 'people', text: 'User Management', action: () => loadUserManagement() }
+                    );
+                }
+                
+                // Create menu items
+                commonItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'nav-item';
+                    
+                    const a = document.createElement('a');
+                    a.className = 'nav-link';
+                    a.href = '#';
+                    a.innerHTML = `<i class="bi bi-${item.icon} mr-2"></i> ${item.text}`;
+                    a.addEventListener('click', item.action);
+                    
+                    li.appendChild(a);
+                    mainMenu.appendChild(li);
+                });
+            }
+            
+            function loadDefaultDashboard() {
+                if (currentUser.role === 'admin') {
+                    loadAdminDashboard();
+                } else {
+                    loadEmployeeDashboard();
+                }
+            }
+            
+            function loadAdminDashboard() {
+                const template = document.getElementById('adminDashboardTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Add admin dashboard content
+                const heading = mainContent.querySelector('h1');
+                const content = document.createElement('div');
+                content.className = 'row';
+                content.innerHTML = `
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-people text-primary" style="font-size: 2.5rem;"></i>
+                                <h5 class="mt-3">Users</h5>
+                                <h2>${users.length}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="bi bi-list-check text-info" style="font-size: 2.5rem;"></i>
+                                <h5 class="mt-3">Pending Requests</h5>
+                                <h2>${breakRequests.filter(r => r.status === 'Pending').length}</h2>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                heading.insertAdjacentElement('afterend', content);
+            }
+            
+            function loadEmployeeDashboard() {
+                const template = document.getElementById('employeeDashboardTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Add employee dashboard content
+                const heading = mainContent.querySelector('h1');
+                const content = document.createElement('div');
+                content.innerHTML = `
+                    <div class="alert alert-info">
+                        Welcome to your dashboard. You can view your attendance and request breaks here.
+                    </div>
+                `;
+                heading.insertAdjacentElement('afterend', content);
+            }
+            
+            function loadBreakRequests() {
+                const template = document.getElementById('breakRequestsTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Populate break requests table
+                const tbody = document.querySelector('#breakRequestsTable tbody');
+                tbody.innerHTML = '';
+                
+                breakRequests.forEach(request => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${request.userName}</td>
+                        <td>${request.date}</td>
+                        <td>${request.duration} minutes</td>
+                        <td>${request.reason}</td>
+                        <td><span class="badge ${getStatusBadgeClass(request.status)}">${request.status}</span></td>
+                        <td>
+                            ${request.status === 'Pending' ? `
+                            <button class="btn btn-sm btn-primary action-btn" data-id="${request.id}">
+                                <i class="bi bi-pencil"></i> Action
+                            </button>
+                            ` : 'No actions'}
+                        </td>
+                    `;
+                });
+                
+                // Add event listeners to action buttons
+                document.querySelectorAll('.action-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const requestId = this.getAttribute('data-id');
+                        showBreakActionModal(requestId);
+                    });
+                });
+            }
+            
+            function showBreakActionModal(requestId) {
+                const modal = new bootstrap.Modal(document.getElementById('breakActionModal'));
+                document.getElementById('breakRequestId').value = requestId;
+                modal.show();
+                
+                // Add submit handler
+                document.getElementById('submitBreakAction').onclick = function() {
+                    processBreakAction(requestId);
+                };
+            }
+            
+            function processBreakAction(requestId) {
+                const status = document.getElementById('actionStatus').value;
+                const comments = document.getElementById('adminComments').value;
+                
+                if (!status) {
+                    alert('Please select an action');
+                    return;
+                }
+                
+                // Update request status
+                const request = breakRequests.find(r => r.id == requestId);
+                if (request) {
+                    request.status = status;
+                    request.adminComments = comments;
+                    
+                    // Close modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('breakActionModal'));
+                    modal.hide();
+                    
+                    // Reload requests
+                    loadBreakRequests();
+                }
+            }
+            
+            function loadAttendanceRecords() {
+                const template = document.getElementById('attendanceRecordsTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Populate user select
+                const userSelect = document.getElementById('userSelect');
+                userSelect.innerHTML = '<option value="">Select Employee</option>';
+                
+                users.filter(u => u.role === 'employee').forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.name;
+                    userSelect.appendChild(option);
+                });
+                
+                // Add event listener for user selection
+                userSelect.addEventListener('change', function() {
+                    const userId = this.value;
+                    if (userId) {
+                        loadUserAttendance(userId);
+                    } else {
+                        document.querySelector('#attendanceTable tbody').innerHTML = '';
+                    }
+                });
+            }
+            
+            function loadUserAttendance(userId) {
+                const user = users.find(u => u.id === userId);
+                if (!user) return;
+                
+                const tbody = document.querySelector('#attendanceTable tbody');
+                tbody.innerHTML = '';
+                
+                // Filter attendance records for this user
+                const userRecords = attendanceRecords.filter(r => r.userId === userId);
+                
+                userRecords.forEach(record => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${record.date}</td>
+                        <td>${record.login || '--'}</td>
+                        <td>${record.logout || '--'}</td>
+                        <td>${calculateHoursWorked(record.login, record.logout)}</td>
+                        <td><span class="badge ${getStatusBadgeClass(record.status)}">${record.status}</span></td>
+                    `;
+                });
+            }
+            
+            function calculateHoursWorked(login, logout) {
+                if (!login || !logout) return '--';
+                
+                // Simple calculation for demo
+                const loginParts = login.split(':');
+                const logoutParts = logout.split(':');
+                
+                const loginHours = parseInt(loginParts[0]);
+                const loginMinutes = parseInt(loginParts[1]);
+                const logoutHours = parseInt(logoutParts[0]);
+                const logoutMinutes = parseInt(logoutParts[1]);
+                
+                const totalMinutes = (logoutHours * 60 + logoutMinutes) - (loginHours * 60 + loginMinutes);
+                const hours = Math.floor(totalMinutes / 60);
+                const minutes = totalMinutes % 60;
+                
+                return `${hours}h ${minutes}m`;
+            }
+            
+            function loadUserManagement() {
+                const template = document.getElementById('userManagementTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Populate users table
+                const tbody = document.querySelector('#usersTable tbody');
+                tbody.innerHTML = '';
+                
+                users.forEach(user => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.name}</td>
+                        <td>${user.role.charAt(0).toUpperCase() + user.role.slice(1)}</td>
+                        <td><span class="badge ${user.active ? 'bg-success' : 'bg-secondary'}">${user.active ? 'Active' : 'Inactive'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary enroll-btn" data-id="${user.id}">
+                                <i class="bi bi-fingerprint"></i> Re-enroll
+                            </button>
+                        </td>
+                    `;
+                });
+                
+                // Add event listener for add user button
+                document.getElementById('addUserBtn').addEventListener('click', showEnrollUserForm);
+                
+                // Add event listeners to enroll buttons
+                document.querySelectorAll('.enroll-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const userId = this.getAttribute('data-id');
+                        startEnrollment(userId);
+                    });
+                });
+            }
+            
+            function showEnrollUserForm() {
+                const template = document.getElementById('enrollUserTemplate');
+                mainContent.innerHTML = '';
+                mainContent.appendChild(template.content.cloneNode(true));
+                
+                // Initialize enrollment form
+                document.getElementById('step1').classList.add('active');
+                
+                // Add event listeners for form navigation
+                document.getElementById('nextToStep2').addEventListener('click', function() {
+                    const fullName = document.getElementById('fullName').value;
+                    const userRole = document.getElementById('userRole').value;
+                    
+                    if (!fullName || !userRole) {
+                        alert('Please fill all fields');
+                        return;
+                    }
+                    
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
+                    
+                    // Initialize fingerprint enrollment
+                    initEnrollmentScanner();
+                });
+                
+                document.getElementById('backToStep1').addEventListener('click', function() {
+                    document.getElementById('step2').classList.remove('active');
+                    document.getElementById('step1').classList.add('active');
+                });
+                
+                document.getElementById('completeEnrollment').addEventListener('click', completeEnrollment);
+            }
+            
+            function initEnrollmentScanner() {
+                const scanner = document.getElementById('enrollmentScanner');
+                const status = document.getElementById('enrollmentStatus');
+                
+                scanner.addEventListener('click', function() {
+                    if (enrollmentFingerprint) return;
+                    
+                    scanner.classList.add('scanning');
+                    status.classList.remove('d-none');
+                    status.textContent = 'Scanning fingerprint...';
+                    status.className = 'alert alert-info';
+                    
+                    // Simulate fingerprint scan
+                    setTimeout(() => {
+                        // In real app, this would be actual scanner data
+                        enrollmentFingerprint = 'fingerprint_' + Math.random().toString(36).substr(2, 9);
+                        
+                        scanner.classList.remove('scanning');
+                        scanner.classList.add('success');
+                        status.textContent = 'Fingerprint captured successfully!';
+                        status.className = 'alert alert-success';
+                        
+                        document.getElementById('completeEnrollment').disabled = false;
+                    }, 2000);
+                });
+            }
+            
+            function completeEnrollment() {
+                const fullName = document.getElementById('fullName').value;
+                const userRole = document.getElementById('userRole').value;
+                
+                // Create new user
+                const newUser = {
+                    id: 'user' + (users.length + 1),
+                    name: fullName,
+                    role: userRole,
+                    fingerprint: enrollmentFingerprint,
+                    active: true
+                };
+                
+                // Add to users array
+                users.push(newUser);
+                
+                // Show success message
+                const status = document.getElementById('enrollmentStatus');
+                status.textContent = 'User enrolled successfully!';
+                status.className = 'alert alert-success';
+                
+                // Return to user management after delay
+                setTimeout(() => {
+                    loadUserManagement();
+                }, 1500);
+            }
+            
+            function startEnrollment(userId) {
+                const user = users.find(u => u.id === userId);
+                if (!user) return;
+                
+                showEnrollUserForm();
+                
+                // Pre-fill form with user details
+                document.getElementById('fullName').value = user.name;
+                document.getElementById('userRole').value = user.role;
+                
+                // Move to step 2
+                document.getElementById('step1').classList.remove('active');
+                document.getElementById('step2').classList.add('active');
+                
+                // Initialize fingerprint enrollment
+                initEnrollmentScanner();
+                
+                // Update button text
+                document.getElementById('completeEnrollment').textContent = 'Update Enrollment';
+            }
+            
+            function getStatusBadgeClass(status) {
+                switch (status) {
+                    case 'Approved': return 'bg-success';
+                    case 'Rejected': return 'bg-danger';
+                    case 'Pending': return 'bg-warning';
+                    case 'Present': return 'bg-success';
+                    case 'Absent': return 'bg-danger';
+                    default: return 'bg-secondary';
+                }
+            }
+            
+            function logout() {
+                currentUser = null;
+                dashboardContainer.classList.add('d-none');
+                authContainer.classList.remove('d-none');
+                
+                // Reset fingerprint scanner
+                fingerScanner.classList.remove('scanning', 'success', 'error');
+                statusMessage.className = 'alert d-none';
+            }
+            
+            function showStatus(message, type) {
+                statusMessage.textContent = message;
+                statusMessage.className = `alert alert-${type}`;
+                statusMessage.classList.remove('d-none');
+            }
+        });
+    </script>
+</body>
+</html>
