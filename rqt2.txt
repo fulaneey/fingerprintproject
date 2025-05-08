@@ -1,0 +1,221 @@
+TRY THIS IF THAT DOEST WORK
+HTML FILE
+<div id="fingerprint-verification">
+    <h1>Identity Verification</h1>
+    <h2>Place your finger on the scanner</h2>
+    
+    <div class="fingerprint-scanner">
+        <div class="scanner-body">
+            <div class="scanner-surface">
+                <svg class="fingerprint-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                    <!-- Realistic fingerprint circles like the Alamy reference -->
+                    <circle cx="50" cy="50" r="45" fill="#f8f9fa" stroke="#e9ecef" stroke-width="1"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#dee2e6" stroke-width="1" stroke-dasharray="2,2"/>
+                    <circle cx="50" cy="50" r="31" fill="none" stroke="#ced4da" stroke-width="1.5" stroke-dasharray="3,1"/>
+                    <circle cx="50" cy="50" r="24" fill="none" stroke="#adb5bd" stroke-width="2"/>
+                    <circle cx="50" cy="50" r="17" fill="none" stroke="#6c757d" stroke-width="2.5"/>
+                    <circle cx="50" cy="50" r="10" fill="#6c757d" stroke="#495057" stroke-width="1"/>
+                    <!-- Fingerprint lines -->
+                    <path class="fingerprint-lines" d="M50,15 Q60,25 58,40 Q53,50 50,55 Q47,60 42,65 Q38,67 35,65 Q33,60 38,55 Q43,50 45,40 Q47,30 50,25
+                                              M50,60 Q55,65 55,75 Q53,85 50,88 Q47,90 42,88 Q40,85 42,80 Q45,75 47,70" 
+                          fill="none" stroke-width="1.5" stroke-linecap="round" stroke="#495057"/>
+                </svg>
+            </div>
+        </div>
+        <div class="status-message">Waiting for fingerprint...</div>
+    </div>
+</div>
+
+
+-----
+CSS
+.fingerprint-scanner {
+    text-align: center;
+    margin: 30px auto;
+    max-width: 280px;
+}
+
+.scanner-body {
+    background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+    border-radius: 16px;
+    padding: 25px;
+    display: inline-block;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    border: 1px solid #dee2e6;
+}
+
+.scanner-surface {
+    width: 140px;
+    height: 140px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.scanner-surface::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0) 40%, rgba(255,255,255,0.8) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.fingerprint-icon {
+    width: 100%;
+    height: 100%;
+}
+
+.fingerprint-lines {
+    stroke: #6c757d;
+    transition: all 0.3s ease;
+}
+
+.status-message {
+    margin-top: 20px;
+    font-size: 1.1em;
+    color: #6c757d;
+    min-height: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Scanning state */
+.scanner-active .scanner-surface::before {
+    opacity: 0.6;
+    animation: scan-glow 1.5s infinite;
+}
+
+.scanner-active .fingerprint-lines {
+    stroke: #0d6efd;
+}
+
+/* Accepted state */
+.scanner-accepted .scanner-surface {
+    background: rgba(25, 135, 84, 0.05);
+}
+
+.scanner-accepted .fingerprint-lines {
+    stroke: #198754;
+}
+
+.scanner-accepted .status-message {
+    color: #198754;
+    font-weight: 500;
+}
+
+/* Rejected state */
+.scanner-rejected .scanner-surface {
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.scanner-rejected .fingerprint-lines {
+    stroke: #dc3545;
+}
+
+.scanner-rejected .status-message {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+@keyframes scan-glow {
+    0% { transform: scale(0.8); opacity: 0; }
+    50% { opacity: 0.6; }
+    100% { transform: scale(1.2); opacity: 0; }
+}
+
+------
+JAVASCRIPT
+// Updated JavaScript with better timing and transitions
+document.addEventListener('DOMContentLoaded', function() {
+    // Clean up existing UI
+    removeUnneededElements();
+    
+    // Initialize scanner
+    const scanner = document.querySelector('.fingerprint-scanner');
+    const statusMessage = document.querySelector('.status-message');
+    
+    // Start the process with a slight delay for better UX
+    setTimeout(() => {
+        statusMessage.textContent = "Ready to scan";
+        setTimeout(initiateScan, 800);
+    }, 300);
+});
+
+function initiateScan() {
+    const scanner = document.querySelector('.fingerprint-scanner');
+    const statusMessage = document.querySelector('.status-message');
+    
+    // Set scanning state
+    scanner.classList.add('scanner-active');
+    scanner.classList.remove('scanner-accepted', 'scanner-rejected');
+    statusMessage.textContent = "Scanning fingerprint...";
+    
+    // Simulate scan process (replace with actual scanner API)
+    setTimeout(() => {
+        // Randomly determine if scan was successful (70% chance)
+        const isVerified = Math.random() > 0.3;
+        
+        if (isVerified) {
+            verifySuccess();
+        } else {
+            verifyFailure();
+        }
+    }, 1800 + Math.random() * 1200); // Random delay between 1.8-3 seconds
+}
+
+function verifySuccess() {
+    const scanner = document.querySelector('.fingerprint-scanner');
+    const statusMessage = document.querySelector('.status-message');
+    
+    scanner.classList.remove('scanner-active');
+    scanner.classList.add('scanner-accepted');
+    statusMessage.textContent = "Identity verified!";
+    
+    // Proceed after delay
+    setTimeout(() => {
+        console.log("Access granted - redirecting...");
+        // window.location.href = "/secure-area";
+    }, 1500);
+}
+
+function verifyFailure() {
+    const scanner = document.querySelector('.fingerprint-scanner');
+    const statusMessage = document.querySelector('.status-message');
+    
+    scanner.classList.remove('scanner-active');
+    scanner.classList.add('scanner-rejected');
+    statusMessage.textContent = "Verification failed";
+    
+    // Retry after delay
+    setTimeout(() => {
+        scanner.classList.remove('scanner-rejected');
+        statusMessage.textContent = "Try again...";
+        setTimeout(initiateScan, 800);
+    }, 2000);
+}
+
+function removeUnneededElements() {
+    // Remove all unnecessary elements from original UI
+    const elements = document.querySelectorAll('button, h2:not(:first-of-type), h3, p');
+    elements.forEach(el => {
+        if (!el.closest('#fingerprint-verification')) return;
+        if (el.textContent.includes('Connect') || el.textContent.includes('Select')) {
+            el.remove();
+        }
+    });
+    
+    // Specific button removal
+    const buttonsToRemove = ['Start Capture', 'Identify', 'Clear', 'Close', 'Specific UserID'];
+    buttonsToRemove.forEach(text => {
+        const elements = Array.from(document.querySelectorAll('*')).filter(el => {
+            return el.textContent.trim() === text;
+        });
+        elements.forEach(el => el.remove());
+    });
+}
