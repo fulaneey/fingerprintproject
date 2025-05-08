@@ -1,0 +1,83 @@
+// Assuming this is part of your existing code
+document.addEventListener('DOMContentLoaded', function() {
+    // Automatically initiate fingerprint capture when page loads
+    initiateFingerprintCapture();
+    
+    // Remove unnecessary buttons
+    removeUnneededElements();
+});
+
+function initiateFingerprintCapture() {
+    // This would call your existing fingerprint capture function
+    // Replace with your actual fingerprint capture function
+    console.log("Auto-initiating fingerprint capture...");
+    
+    // Simulate the fingerprint capture process
+    setTimeout(function() {
+        // After capture, automatically identify the fingerprint
+        identifyFingerprint();
+    }, 2000);
+}
+
+function identifyFingerprint() {
+    // This would call your existing fingerprint identification function
+    console.log("Identifying captured fingerprint...");
+    
+    // Here you would typically send the fingerprint data to your backend
+    // for verification against the stored fingerprint for the user
+}
+
+function removeUnneededElements() {
+    // Remove the buttons you don't need
+    const elementsToRemove = [
+        'Start Capture', 
+        'Identify', 
+        'Clear', 
+        'Close',
+        'Specific UserID'  // Assuming this is a button or input field
+    ];
+    
+    elementsToRemove.forEach(text => {
+        const buttons = Array.from(document.querySelectorAll('button, input'));
+        buttons.forEach(btn => {
+            if (btn.value === text || btn.textContent.trim() === text) {
+                btn.remove();
+            }
+        });
+    });
+}
+-- 
+UPDATE HTML
+<div id="fingerprint-verification">
+    <h1>Identity Verification</h1>
+    
+    <h2>Please Connect the Fingerprint Reader</h2>
+    
+    <div class="status-message">
+        <p>Automatically capturing fingerprint...</p>
+        <div class="spinner"></div>
+    </div>
+</div>
+
+----
+UPDATE CSS
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid #3498db;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.status-message {
+    text-align: center;
+    margin: 20px 0;
+    font-size: 1.2em;
+}
